@@ -1,25 +1,38 @@
-version: "3"
+version: '3'
 services:
   db:
     image: mongo
     restart: unless-stopped
+    networks: [gazzaotalk]
     ports:
       - 27017:27017
     volumes:
       - db-data:/data/db
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=gazzaotalk
-      - MONGO_INITDB_ROOT_PASSWORD=gazzaotalk
+      - MONGO_INITDB_DATABASE=gazzaotalk
 
   server:
     image: ghcr.io/gazzaotalk/server
     build: .
     restart: unless-stopped
+    networks: [gazzaotalk]
     ports:
       - 8000:8000
+    volumes:
+      - .:/app
     environment:
-      - MONGODB_URI=mongodb://gazzaotalk:gazzaotalk@db:27017/gazzaotalk
+      - MONGODB_URI=mongodb://db:27017/gazzaotalk
       - SECRET_KEY=${SECRET_KEY}
+    command: npm run dev
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gazzaotalk-server.entrypoints=https
+      - traefik.http.routers.gazzaotalk-server.rule=Host(`api.${DOMAIN}`)
+      - traefik.http.services.gazzaotalk-server.loadbalancer.server.port=8000
 
 volumes:
   db-data:
+
+networks:
+  gazzaotalk:
+    external: true
