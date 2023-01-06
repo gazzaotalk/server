@@ -62,26 +62,26 @@
         }
 
         async function enterRoom(roomId) {
-            room = await (await client.get(`/api/rooms/${roomId}`)).data;
+            room = await (await client.get(`/rooms/${roomId}`)).data;
 
             const $console = document.getElementById('console');
             $console.innerHTML = '';
             print(`방: ${room.name}`);
 
-            const messages = (await client.get(`/api/rooms/${room._id}/messages`)).data.reverse();
-            messages.forEach(onMessage);
+            const messages = (await client.get(`/rooms/${room._id}/messages`)).data.reverse();
+            messages.forEach((message) => onMessage(message, false));
         }
 
         async function getProfile() {
-            return (await client.get('/api/profile')).data;
+            return (await client.get('/profile')).data;
         }
 
         async function getRooms() {
-            return (await client.get('/api/rooms')).data;
+            return (await client.get('/rooms')).data;
         }
 
         async function getFriends() {
-            return (await client.get('/api/friends')).data;
+            return (await client.get('/friends')).data;
         }
 
         function onSubmitLogin(event) {
@@ -89,7 +89,7 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            client.post('/api/auth/login', { username, password }).then(response => {
+            client.post('/auth/login', { username, password }).then(response => {
                 print(response.data.message);
                 onLogin();
             });
@@ -101,11 +101,18 @@
             sendMessage(message);
         }
 
-        function onMessage(message) {
+        function onMessage(message, notify = true) {
             const { user: userId, room: roomId, content } = message;
 
             const user = room.users.find(user => user._id === userId);
             print(`[${room.name}] ${user.name}: ${content}`);
+
+            if (notify) {
+                if (room.notification instanceof Notification) {
+                    room.notification.close();
+                }
+                room.notification = new Notification(`[${room.name}] ${user.name}`, { body: content });
+            }
         }
 
         function sendMessage(content) {
@@ -119,6 +126,8 @@
         async function main() {
             print('This is console.');
             onLogin();
+
+            Notification.requestPermission();
         }
 
         document.addEventListener("DOMContentLoaded", main);
