@@ -12,5 +12,17 @@
     "editor.rulers": [
         120
     ],
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "remote.SSH.defaultForwardedPorts": [
+        {
+            "name": "db",
+            "localPort": 27017,
+            "remotePort": 27017
+        },
+        {
+            "name": "server",
+            "localPort": 8000,
+            "remotePort": 8000
+        }
+    ]
 }
