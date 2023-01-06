@@ -32,6 +32,10 @@ const ChatService = {
       socket.on('message', (datagram) => {
         const { room: roomId, content } = datagram;
 
+        if (!content) {
+          return;
+        }
+
         console.log(datagram);
 
         if (settings.IS_DEV) {
