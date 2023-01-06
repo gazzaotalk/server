@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        pre {
+            background-color: black;
+            color: white;
+        }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.2.2/axios.min.js"
+        integrity="sha512-QTnb9BQkG4fBYIt9JGvYmxPpd6TBeKp6lsUrtiVQsrJ9sb33Bn9s0wMQO9qVBFbPX3xHRAsBHvXlcsrnJjExjg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        function print(text = '') {
+            document.getElementById('console').innerText += `${text}\n`;
+        }
+
+        function printRooms(rooms) {
+            const $rooms = document.getElementById('rooms');
+            $rooms.innerHTML = '';
+
+            rooms.forEach(({ _id, name }) => {
+                $rooms.innerHTML += `
+                    <button onclick="enterRoom('${_id}')">${name}</button>
+                `;
+            });
+        }
+
+        const client = axios.create();
+        let socket;
+        let rooms;
+        let room;
+        let friends;
+
+        async function onLogin() {
+            const profile = await getProfile();
+            print(`안녕하세요, ${profile.name}님!`);
+
+            socket = io();
+            socket.on('message', onMessage);
+
+            rooms = await getRooms();
+            friends = await getFriends();
+
+            print();
+            print(`* 방 목록 (${rooms.length})`);
+            printRooms(rooms);
+            //rooms.forEach(({ _id, name }) => print(`    ${name} (${_id})`));
+
+            print();
+            print(`* 친구 목록 (${friends.length})`);
+            friends.forEach(({ _id, name }) => print(`    ${name} (${_id})`));
+
+            print();
+        }
+
+        async function enterRoom(roomId) {
+            room = await (await client.get(`/api/rooms/${roomId}`)).data;
+
+            const $console = document.getElementById('console');
+            $console.innerHTML = '';
+            print(`방: ${room.name}`);
+
+            const messages = (await client.get(`/api/rooms/${room._id}/messages`)).data.reverse();
+            messages.forEach(onMessage);
+        }
+
+        async function getProfile() {
+            return (await client.get('/api/profile')).data;
+        }
+
+        async function getRooms() {
+            return (await client.get('/api/rooms')).data;
+        }
+
+        async function getFriends() {
+            return (await client.get('/api/friends')).data;
+        }
+
+        function onSubmitLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            client.post('/api/auth/login', { username, password }).then(response => {
+                print(response.data.message);
+                onLogin();
+            });
+        }
+
+        function onSubmitMessage(event) {
+            event.preventDefault();
+            const message = document.getElementById('message').value;
+            sendMessage(message);
+        }
+
+        function onMessage(message) {
+            const { user: userId, room: roomId, content } = message;
+
+            const user = room.users.find(user => user._id === userId);
+            print(`[${room.name}] ${user.name}: ${content}`);
+        }
+
+        function sendMessage(content) {
+            console.log(room);
+            socket.emit('message', {
+                room: room._id,
+                content: content,
+            });
+        }
+
+        async function main() {
+            print('This is console.');
+            onLogin();
+        }
+
+        document.addEventListener("DOMContentLoaded", main);
+    </script>
+</head>
+
+<body>
+    <div id="rooms"></div>
+
+    <form onSubmit="onSubmitLogin(event)">
+        <input id="username">
+        <input id="password">
+        <button type="submit">로그인</button>
+    </form>
+
+    <pre id="console"></pre>
+
+    <form onSubmit="onSubmitMessage(event)">
+        <input id="message" type="text" placeholder="message">
+        <button type="submit">전송</button>
+    </form>
+</body>
+
+</html>
